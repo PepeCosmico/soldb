@@ -1,0 +1,2 @@
+[workspace]
+members = ["soldb_lib", "soldb_program"]
