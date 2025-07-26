@@ -1,3 +1,5 @@
+mod utils;
+
 use borsh::BorshSerialize;
 use solana_program_test::*;
 use solana_sdk::{
@@ -6,20 +8,17 @@ use solana_sdk::{
 
 use soldb_program::{
     id as program_id,
-    instructions::{CreateTable, SolDbIntructions},
+    instructions::{Put, SolDbIntructions},
 };
 
 #[tokio::test]
 async fn test_create_table() -> Result<(), TransportError> {
-    let mut program_test = ProgramTest::new(
-        "soldb_program", // <-- this should match the name of your crate/so file
-        program_id(),
-        None, // <-- pass None here!
-    );
+    let (banks_client, payer, last_blockhash) = utils::setup().await?;
 
-    let (banks_client, payer, last_blockhash) = program_test.start().await;
-
-    let instr = SolDbIntructions::CreateTable(CreateTable {});
+    let instr = SolDbIntructions::Put(Put {
+        key: vec![0],
+        payload: vec![0],
+    });
     let mut ix_data = Vec::new();
     instr.serialize(&mut ix_data).unwrap();
 
@@ -38,7 +37,7 @@ async fn test_create_table() -> Result<(), TransportError> {
     let logs = meta.log_messages;
 
     assert!(
-        logs.iter().any(|line| line.contains("Create Table")),
+        logs.iter().any(|line| line.contains("Put")),
         "expected to find our `msg!` output in logs: {:#?}",
         logs
     );
