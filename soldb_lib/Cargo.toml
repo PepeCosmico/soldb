@@ -1,7 +1,12 @@
+cargo-features = ["edition2024"]
+
 [package]
 name = "soldb_lib"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+borsh = "1.5.7"
+solana-sdk = "2.3.1"
+solana-client = "2.3.5"
 thiserror = "1.0"
