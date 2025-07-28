@@ -1,19 +1,17 @@
 mod utils;
 
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program_test::*;
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    rent::Rent,
     signer::Signer,
-    sysvar::Sysvar,
     transaction::Transaction,
     transport::TransportError,
 };
 use solana_system_interface::program;
 
-use soldb_program::instructions::SolDbIntructions;
+use soldb_program::{accounts::SolTable, instructions::SolDbIntructions};
 
 #[tokio::test]
 async fn test_create_table() -> Result<(), TransportError> {
@@ -24,7 +22,7 @@ async fn test_create_table() -> Result<(), TransportError> {
     let (pda_pubkey, bump) =
         Pubkey::find_program_address(&[name.as_bytes(), payer.pubkey().as_ref()], &program_id);
 
-    let instr = SolDbIntructions::CreateTable(soldb_program::instructions::CreateTable {
+    let instr = SolDbIntructions::InitTable(soldb_program::instructions::InitTable {
         name: name.clone(),
         bump,
     });
@@ -48,7 +46,11 @@ async fn test_create_table() -> Result<(), TransportError> {
 
     banks_client.process_transaction_with_metadata(txn).await?;
 
-    let expected_space = 0usize;
+    let sol_table = SolTable { name: name.clone() };
+    let mut serialized = Vec::new();
+    sol_table.serialize(&mut serialized)?;
+
+    let expected_space = serialized.len();
     let rent = banks_client
         .get_rent()
         .await
@@ -74,6 +76,9 @@ async fn test_create_table() -> Result<(), TransportError> {
         expected_space,
         "PDA account data length mismatch"
     );
+
+    let sol_table = SolTable::deserialize(&mut account.data.as_slice()).unwrap();
+    assert_eq!(sol_table.name, name);
 
     Ok(())
 }

@@ -3,8 +3,8 @@
 use crate::processor::process_instruction;
 use solana_program::{declare_id, entrypoint};
 
-mod accounts;
-mod error;
+pub mod accounts;
+pub mod error;
 pub mod instructions;
 pub mod processor;
 

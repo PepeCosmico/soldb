@@ -1,3 +1,4 @@
+use borsh::BorshSerialize;
 use solana_program::{
     account_info::{AccountInfo, next_account_info},
     entrypoint::ProgramResult,
@@ -10,7 +11,10 @@ use solana_program::{
 };
 use solana_system_interface::instruction;
 
-use crate::instructions::{CreateTable, Delete, Put, SolDbIntructions};
+use crate::{
+    accounts::SolTable,
+    instructions::{Delete, InitTable, Put, SolDbIntructions},
+};
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -19,8 +23,8 @@ pub fn process_instruction(
     let instruction = SolDbIntructions::unpack(instruction_data)?;
 
     match instruction {
-        SolDbIntructions::CreateTable(create_table) => {
-            process_create_table(create_table, program_id, accounts)?;
+        SolDbIntructions::InitTable(init_table) => {
+            process_init_table(init_table, program_id, accounts)?;
         }
         SolDbIntructions::Put(put) => {
             process_put(put, accounts)?;
@@ -33,8 +37,8 @@ pub fn process_instruction(
     Ok(())
 }
 
-fn process_create_table(
-    create_table: CreateTable,
+fn process_init_table(
+    init_table: InitTable,
     program_id: &Pubkey,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
@@ -44,23 +48,28 @@ fn process_create_table(
     let sys_prog = next_account_info(account_iter)?;
 
     let (expected_pda, expected_bump) = Pubkey::find_program_address(
-        &[&create_table.name.as_ref(), owner_info.key.as_ref()],
+        &[&init_table.name.as_ref(), owner_info.key.as_ref()],
         program_id,
     );
 
-    if pda_info.key != &expected_pda || create_table.bump != expected_bump {
+    if pda_info.key != &expected_pda || init_table.bump != expected_bump {
         msg!("PDA mismatch");
         return Err(ProgramError::InvalidSeeds);
     }
 
+    let sol_table = SolTable {
+        name: init_table.name.clone(),
+    };
+    let mut serialized = Vec::new();
+    sol_table.serialize(&mut serialized)?;
+    let space = serialized.len() as u64;
     let rent = Rent::get()?;
-    let space: u64 = 0;
     let lamports = rent.minimum_balance(space as usize);
 
     let seeds = &[
-        create_table.name.as_ref(),
+        init_table.name.as_ref(),
         owner_info.key.as_ref(),
-        &[create_table.bump],
+        &[init_table.bump],
     ];
     let signer_seeds = &[&seeds[..]];
 
@@ -70,6 +79,12 @@ fn process_create_table(
         &[owner_info.clone(), pda_info.clone(), sys_prog.clone()],
         signer_seeds,
     )?;
+
+    let sol_table = SolTable {
+        name: init_table.name,
+    };
+
+    sol_table.serialize(&mut &mut pda_info.data.borrow_mut()[..])?;
 
     Ok(())
 }

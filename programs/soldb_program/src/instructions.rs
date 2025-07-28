@@ -4,7 +4,7 @@ use solana_program::program_error::ProgramError;
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub enum SolDbIntructions {
-    CreateTable(CreateTable),
+    InitTable(InitTable),
     Put(Put),
     Delete(Delete),
 }
@@ -17,9 +17,9 @@ impl SolDbIntructions {
 
         match variant {
             0 => {
-                let create_table = CreateTable::try_from_slice(rest)
+                let create_table = InitTable::try_from_slice(rest)
                     .map_err(|_| ProgramError::InvalidInstructionData)?;
-                Ok(Self::CreateTable(create_table))
+                Ok(Self::InitTable(create_table))
             }
             1 => {
                 let put =
@@ -37,7 +37,7 @@ impl SolDbIntructions {
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
-pub struct CreateTable {
+pub struct InitTable {
     pub name: String,
     pub bump: u8,
 }
