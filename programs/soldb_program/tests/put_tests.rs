@@ -10,10 +10,11 @@ use soldb_program::{
     id as program_id,
     instructions::{Put, SolDbIntructions},
 };
+use utils::setup;
 
 #[tokio::test]
 async fn test_create_table() -> Result<(), TransportError> {
-    let (banks_client, payer, last_blockhash) = utils::setup().await?;
+    let (banks_client, payer, last_blockhash) = setup().await?;
 
     let instr = SolDbIntructions::Put(Put {
         key: vec![0],

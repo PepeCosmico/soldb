@@ -11,9 +11,11 @@ use soldb_program::{
     instructions::{Delete, SolDbIntructions},
 };
 
+use crate::utils::setup;
+
 #[tokio::test]
 async fn test_create_table() -> Result<(), TransportError> {
-    let (banks_client, payer, last_blockhash) = utils::setup().await?;
+    let (banks_client, payer, last_blockhash) = setup().await?;
 
     let instr = SolDbIntructions::Delete(Delete { key: vec![0] });
     let mut ix_data = Vec::new();
