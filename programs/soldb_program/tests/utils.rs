@@ -1,7 +1,6 @@
 #![allow(dead_code)]
-use std::ascii::AsciiExt;
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::BorshSerialize;
 use solana_program_test::{BanksClient, ProgramTest};
 use solana_sdk::{
     hash::Hash,
@@ -13,14 +12,11 @@ use solana_sdk::{
     transport::TransportError,
 };
 use solana_system_interface::program;
-use soldb_program::{
-    accounts::{SolTable, SolValue},
-    id as program_id,
-    instructions::SolDbIntructions,
-};
+use soldb_program::{id as program_id, instructions::SolDbIntructions};
 
 pub async fn setup() -> Result<(BanksClient, Keypair, Hash), TransportError> {
-    let program_test = ProgramTest::new("soldb_program", program_id(), None);
+    let pid = Pubkey::new_from_array(program_id().to_bytes());
+    let program_test = ProgramTest::new("soldb_program", pid, None);
 
     Ok(program_test.start().await)
 }
@@ -30,7 +26,7 @@ pub async fn init_table(
     payer: &Keypair,
     last_blockhash: Hash,
     name: String,
-) -> Result<Pubkey, TransportError> {
+) -> Result<(Pubkey, u8), TransportError> {
     let program_id = soldb_program::id();
 
     let (pda_pubkey, bump) =
@@ -46,7 +42,7 @@ pub async fn init_table(
     let accounts = vec![
         AccountMeta::new(payer.pubkey(), true),
         AccountMeta::new(pda_pubkey, false),
-        AccountMeta::new_readonly(program::id(), false),
+        AccountMeta::new_readonly(program::ID, false),
     ];
 
     let ix = Instruction {
@@ -60,7 +56,7 @@ pub async fn init_table(
 
     banks_client.process_transaction_with_metadata(txn).await?;
 
-    Ok(pda_pubkey)
+    Ok((pda_pubkey, bump))
 }
 
 pub async fn insert(
@@ -70,7 +66,7 @@ pub async fn insert(
     table: &Pubkey,
     key: Vec<u8>,
     value: Vec<u8>,
-) -> Result<Pubkey, TransportError> {
+) -> Result<(Pubkey, u8), TransportError> {
     let program_id = soldb_program::id();
 
     let (pda_pubkey, bump) = Pubkey::find_program_address(
@@ -104,5 +100,5 @@ pub async fn insert(
 
     banks_client.process_transaction_with_metadata(txn).await?;
 
-    Ok(pda_pubkey)
+    Ok((pda_pubkey, bump))
 }

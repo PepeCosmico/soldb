@@ -12,10 +12,11 @@ async fn test_insert() -> Result<(), TransportError> {
     let program_id = soldb_program::id();
 
     let name = "Test".to_string();
-    let pda_table_pubkey = utils::init_table(&banks_client, &payer, last_blockhash, name).await?;
+    let (pda_table_pubkey, _bump) =
+        utils::init_table(&banks_client, &payer, last_blockhash, name).await?;
 
     let value: Vec<u8> = "v-0".into();
-    let pda_val_pubkey = utils::insert(
+    let (pda_val_pubkey, _bump) = utils::insert(
         &banks_client,
         &payer,
         last_blockhash,

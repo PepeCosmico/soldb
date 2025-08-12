@@ -85,7 +85,10 @@ pub struct Insert {
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub struct Put {
+    pub table: String,
+    pub table_bump: u8,
     pub key: Vec<u8>,
+    pub key_bump: u8,
     pub payload: Vec<u8>,
 }
 

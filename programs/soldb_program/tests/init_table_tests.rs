@@ -13,7 +13,8 @@ async fn test_init_table() -> Result<(), TransportError> {
     let program_id = soldb_program::id();
 
     let name = "Test".to_string();
-    let pda_pubkey = utils::init_table(&banks_client, &payer, last_blockhash, name.clone()).await?;
+    let (pda_pubkey, _bump) =
+        utils::init_table(&banks_client, &payer, last_blockhash, name.clone()).await?;
 
     let sol_table = SolTable { name: name.clone() };
     let mut serialized = Vec::new();
