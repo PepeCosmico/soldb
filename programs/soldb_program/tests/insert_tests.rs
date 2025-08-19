@@ -4,7 +4,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program_test::*;
 use solana_sdk::transport::TransportError;
 
-use soldb_program::accounts::SolValue;
+use soldb_program::accounts::{SolTable, SolValue};
 
 #[tokio::test]
 async fn test_insert() -> Result<(), TransportError> {
@@ -12,17 +12,19 @@ async fn test_insert() -> Result<(), TransportError> {
     let program_id = soldb_program::id();
 
     let name = "Test".to_string();
+    let table = SolTable { name };
     let (pda_table_pubkey, _bump) =
-        utils::init_table(&banks_client, &payer, last_blockhash, name).await?;
+        utils::init_table(&banks_client, &payer, last_blockhash, &table).await?;
 
     let value: Vec<u8> = "v-0".into();
+    let sol_value = SolValue { val: value.clone() };
     let (pda_val_pubkey, _bump) = utils::insert(
         &banks_client,
         &payer,
         last_blockhash,
         &pda_table_pubkey,
         "k-0".into(),
-        value.clone(),
+        &sol_value,
     )
     .await?;
 

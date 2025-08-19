@@ -159,11 +159,13 @@ fn process_put(put: Put, program_id: &Pubkey, accounts: &[AccountInfo]) -> Progr
     require_keys_eq!(table_info.owner, program_id, SolDbError::WrongOwner);
     require_keys_eq!(val_info.owner, program_id, SolDbError::WrongOwner);
 
-    let (expected_table_pda, expected_table_bump) =
-        Pubkey::find_program_address(&[&put.table.as_ref(), owner_info.key.as_ref()], program_id);
+    let (expected_table_pda, expected_table_bump) = Pubkey::find_program_address(
+        &[&put.table.as_bytes(), owner_info.key.as_ref()],
+        program_id,
+    );
 
     require!(
-        table_info.key != &expected_table_pda || put.table_bump != expected_table_bump,
+        table_info.key == &expected_table_pda && put.table_bump == expected_table_bump,
         SolDbError::PdaMismatch
     );
 
@@ -171,12 +173,16 @@ fn process_put(put: Put, program_id: &Pubkey, accounts: &[AccountInfo]) -> Progr
         SolTable::try_from_slice(&table_info.data.borrow()).map_err(|_| SolDbError::NotTable)?;
 
     let (expected_val_pda, expected_val_bump) = Pubkey::find_program_address(
-        &[&put.key, table_info.key.as_ref(), owner_info.key.as_ref()],
+        &[
+            &put.key,
+            &table_info.key.to_bytes(),
+            owner_info.key.as_ref(),
+        ],
         program_id,
     );
 
     require!(
-        val_info.key != &expected_val_pda || put.key_bump != expected_val_bump,
+        val_info.key == &expected_val_pda && put.key_bump == expected_val_bump,
         SolDbError::PdaMismatch
     );
 
@@ -203,7 +209,6 @@ fn process_put(put: Put, program_id: &Pubkey, accounts: &[AccountInfo]) -> Progr
     }
 
     let rent = Rent::get()?;
-    let old_min = rent.minimum_balance(old_space as usize);
     let new_min = rent.minimum_balance(new_space as usize);
 
     if new_min > val_info.lamports() {
@@ -216,7 +221,18 @@ fn process_put(put: Put, program_id: &Pubkey, accounts: &[AccountInfo]) -> Progr
 
     val_info.resize(new_space as usize)?;
 
-    msg!("Put");
+    if new_space < old_space {
+        let after_min = rent.minimum_balance(new_space as usize);
+        let cur = val_info.lamports();
+        if cur > after_min {
+            let refund = cur - after_min;
+            **val_info.try_borrow_mut_lamports()? -= refund;
+            **owner_info.try_borrow_mut_lamports()? += refund;
+        }
+    }
+
+    sol_value.serialize(&mut &mut val_info.data.borrow_mut()[..])?;
+
     Ok(())
 }
 

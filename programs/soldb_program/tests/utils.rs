@@ -12,7 +12,11 @@ use solana_sdk::{
     transport::TransportError,
 };
 use solana_system_interface::program;
-use soldb_program::{id as program_id, instructions::SolDbIntructions};
+use soldb_program::{
+    accounts::{SolTable, SolValue},
+    id as program_id,
+    instructions::SolDbIntructions,
+};
 
 pub async fn setup() -> Result<(BanksClient, Keypair, Hash), TransportError> {
     let pid = Pubkey::new_from_array(program_id().to_bytes());
@@ -25,15 +29,17 @@ pub async fn init_table(
     banks_client: &BanksClient,
     payer: &Keypair,
     last_blockhash: Hash,
-    name: String,
+    table: &SolTable,
 ) -> Result<(Pubkey, u8), TransportError> {
     let program_id = soldb_program::id();
 
-    let (pda_pubkey, bump) =
-        Pubkey::find_program_address(&[name.as_bytes(), payer.pubkey().as_ref()], &program_id);
+    let (pda_pubkey, bump) = Pubkey::find_program_address(
+        &[table.name.as_bytes(), payer.pubkey().as_ref()],
+        &program_id,
+    );
 
     let instr = SolDbIntructions::InitTable(soldb_program::instructions::InitTable {
-        name: name.clone(),
+        name: table.name.clone(),
         bump,
     });
     let mut ix_data = Vec::new();
@@ -65,7 +71,7 @@ pub async fn insert(
     last_blockhash: Hash,
     table: &Pubkey,
     key: Vec<u8>,
-    value: Vec<u8>,
+    sol_value: &SolValue,
 ) -> Result<(Pubkey, u8), TransportError> {
     let program_id = soldb_program::id();
 
@@ -76,7 +82,7 @@ pub async fn insert(
 
     let instr = SolDbIntructions::Insert(soldb_program::instructions::Insert {
         key,
-        payload: value.clone(),
+        payload: sol_value.val.clone(),
         bump,
     });
     let mut ix_data = Vec::new();
