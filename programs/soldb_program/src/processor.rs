@@ -58,7 +58,9 @@ fn process_init_table(
     );
 
     if pda_info.key != &expected_pda || init_table.bump != expected_bump {
-        msg!("PDA mismatch");
+        msg!(
+            "Invalid Seeds -- PDA of table account do not match the PDA generated with instruction data."
+        );
         return Err(ProgramError::InvalidSeeds);
     }
 
