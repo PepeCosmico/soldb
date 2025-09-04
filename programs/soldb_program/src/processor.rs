@@ -236,11 +236,47 @@ fn process_put(put: Put, program_id: &Pubkey, accounts: &[AccountInfo]) -> Progr
     Ok(())
 }
 
-fn process_delete(
-    _delete: Delete,
-    _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-) -> ProgramResult {
-    msg!("Delete");
+fn process_delete(delete: Delete, program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_iter = &mut accounts.iter();
+    let owner_info = next_account_info(account_iter)?;
+    let table_info = next_account_info(account_iter)?;
+    let val_info = next_account_info(account_iter)?;
+    let _sys_prog = next_account_info(account_iter)?;
+
+    require_keys_eq!(table_info.owner, program_id, SolDbError::WrongOwner);
+    require_keys_eq!(val_info.owner, program_id, SolDbError::WrongOwner);
+
+    let (expected_table_pda, expected_table_bump) = Pubkey::find_program_address(
+        &[&delete.table.as_bytes(), owner_info.key.as_ref()],
+        program_id,
+    );
+
+    require!(
+        table_info.key == &expected_table_pda && delete.table_bump == expected_table_bump,
+        SolDbError::PdaMismatch
+    );
+
+    let _ =
+        SolTable::try_from_slice(&table_info.data.borrow()).map_err(|_| SolDbError::NotTable)?;
+
+    let (expected_val_pda, expected_val_bump) = Pubkey::find_program_address(
+        &[
+            &delete.key,
+            &table_info.key.to_bytes(),
+            owner_info.key.as_ref(),
+        ],
+        program_id,
+    );
+
+    require!(
+        val_info.key == &expected_val_pda && delete.key_bump == expected_val_bump,
+        SolDbError::PdaMismatch
+    );
+
+    **owner_info.lamports.borrow_mut() += **val_info.lamports.borrow();
+    **val_info.lamports.borrow_mut() = 0;
+
+    val_info.data.borrow_mut().fill(0);
+
     Ok(())
 }
